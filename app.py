@@ -62,8 +62,11 @@ def run_docking(grid_in, lig_filein, lig_smilesin, lig_drawin):
         m =Chem.MolFromMolBlock(lig_drawin)
         inchi = Chem.MolToInchiKey(m)
         lig_file = os.path.join(temp_dir, f'ligand_{inchi}.sdf')
-        with Chem.SDWriter(lig_file) as w:
-            w.write(m)
+        lines = lig_drawin.split('\n')
+        lines[0] = inchi
+        modified_lig_drawin = '\n'.join(lines)
+        with open(lig_file, 'w') as f:
+            f.write(modified_lig_drawin)
         logging.info(f"ligand drawing : {inchi}")
 
     # Validate file paths
@@ -91,7 +94,7 @@ def run_docking(grid_in, lig_filein, lig_smilesin, lig_drawin):
     logging.info(f"glide results...")
     ## copy result from temporary folder to static folder
     df = read_schrodinger(sdfgz_file, temp_dir)
-    save_sdffile = os.path.join(SAVE_PATH, f"{current_time}_{os.path.basename(grid_file)}_{os.path.basename(lig_file)}.sdf")
+    save_sdffile = os.path.join(SAVE_PATH, f"{current_time}_{os.path.basename(grid_file)}_{os.path.basename(lig_file)}")
     copyfile(result_file, save_sdffile)
     df.sort_values(by='r_i_docking_score',ascending=False, inplace=True)
 
@@ -176,11 +179,7 @@ def delete_fileview(file, view_selector_content_, view_result_selector):
                                choices=labels, value=init_value)
     return view_selector_content, view_result_selector
 
-def run(hidden_state):
-    molfile =  f"{hidden_state}"
-    m = Chem.MolFromMolBlock(molfile)
-    smiles = Chem.MolToSmiles(m)
-    return [molfile, smiles]
+
 
 with gr.Blocks(title="Schrodinger Docking") as demo:
 
@@ -205,7 +204,7 @@ with gr.Blocks(title="Schrodinger Docking") as demo:
                     # Use gr.JS to run the JavaScript and fetch SMILES from Ketcher
                     btn_smiles.click(fn=None, inputs=[], outputs=[hidden_state], js=drawing.js_code)
                     # run python function on change of hidden textbox, add your logic to run function
-                    hidden_state.change(fn=run, inputs=[hidden_state], outputs=[lig_drawin, lig_smilesout])
+                    hidden_state.change(fn=drawing.run, inputs=[hidden_state], outputs=[lig_drawin, lig_smilesout])
                     #logging.info(f"{lig_drawin.value}\n {lig_smilesin.value}")
 
                           

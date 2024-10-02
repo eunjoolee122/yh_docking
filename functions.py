@@ -69,40 +69,51 @@ def extract_pdbfile(zipfile, data_dir):
     os.system(f"{os.getenv('SCHRODINGER')}/utilities/structconvert {mae_file} {pdb_file}")
     return pdb_file
               
-    
-def view_in_ngl(molblock):
-    # Placeholder: You will need to replace this with the NGL code that visualizes the molblock
-    ngl_html = f"""
-    <div id="viewport" style="width: 500px; height: 500px;"></div>
-    <script src="https://cdn.jsdelivr.net/npm/ngl@2.0.0-dev.36/dist/ngl.js"></script>
-    <script>
-        var stage = new NGL.Stage("viewport");
-        var stringBlob = new Blob([{molblock}], {{type: 'text/plain'}});
-        stage.loadFile(stringBlob, {{ ext: 'sdf' }}).then(function (component) {{
-            component.addRepresentation("ball+stick");
-            stage.autoView();
-        }});
-    </script>
-    """
-    return ngl_html
 
-def view_multiple_in_ngl(molblocks):
-    # Generates the NGLView HTML for multiple molblocks
-    ngl_html = """
-    <div id="viewport" style="width: 500px; height: 500px;"></div>
-    <script src="https://unpkg.com/ngl@2.3.1/dist/ngl.js"></script>
-    <script>
-        var stage = new NGL.Stage("viewport");
-    """
-    
-    for molblock in molblocks:
-        ngl_html += f"""
-        var stringBlob = new Blob(['{molblock}'], {{type: 'text/plain'}});
-        stage.loadFile(stringBlob, {{ ext: 'mol' }}).then(function (component) {{
-            component.addRepresentation("ball+stick");
-            stage.autoView();
-        }});
-        """
-    
-    ngl_html += "</script>"
-    return ngl_html
+
+def extract_structure_info(file_path):
+    # Determine the file type based on the extension
+    file_extension = file_path.split('.')[-1].lower()
+
+    if file_extension == 'pdb':
+        return extract_pdb_info(file_path)
+    elif file_extension in ['sdf']:
+        return extract_mol_sdf_info(file_path)
+    else:
+        return "Unsupported file format.Please insert SDF or PDB file"
+
+def extract_pdb_info(file_path):
+    with open(file_path) as f:
+        pdb_text = f.read()
+    return {os.path.basename(file_path): pdb_text}
+
+def extract_mol_sdf_info(file_path):
+
+    with open(file_path, 'r') as file:
+        content = file.read()
+    # Split the content into separate molecules based on SDF/MOL format
+    #if file_path.endswith('sdf'):
+        # Split by the "$$$$" delimiter used in SDF files
+    molecules = content.split('$$$$\n')
+    #else:
+        # For MOL files, typically, there are no strict delimiters, but we will assume
+        # each MOL file contains a single molecule and return as a list
+    #    molecules = [content]
+
+    result = {}
+    for i, mol_text in enumerate(molecules):
+        if mol_text.strip():  # Check if the text is not empty
+            # Get the molecule name (usually the first line in MOL/SDF format)
+            lines = mol_text.strip().splitlines()
+            if lines:
+                # For SDF, the name is often defined on the first line or the first line after a blank line
+                name_line = lines[0].strip()
+                molecule_name = name_line.split()[0]  # Extract the first word as the name
+                if molecule_name is None:
+                    molecule_name = f"os.path.basename(filepath)_{str(i)}"
+                # Store the molecule name and content in the dictionary
+                result[molecule_name] = mol_text.strip()  # Store the entire content
+
+    return result
+
+
